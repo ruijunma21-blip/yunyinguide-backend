@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>云引 Guide · AI 智能辅导 App 下载</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif; }
+  .gradient-bg { background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 50%, #F7A355 100%); }
+  .card-shadow { box-shadow: 0 20px 60px rgba(255,107,53,0.15); }
+  .feature-card { transition: transform 0.2s; }
+  .feature-card:hover { transform: translateY(-4px); }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+  .float { animation: float 3s ease-in-out infinite; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- Hero -->
+<section class="gradient-bg text-white">
+  <div class="max-w-4xl mx-auto px-6 py-16 text-center">
+    <div class="float text-7xl mb-6">📚</div>
+    <h1 class="text-4xl md:text-5xl font-black mb-3">云引 Guide</h1>
+    <p class="text-xl text-orange-100 mb-2">AI 驱动的 K12 智能辅导助手</p>
+    <p class="text-sm text-orange-200 mb-10">专为家长设计 · 拍题秒分析 · AI 讲解更清晰</p>
+
+    <!-- Download Buttons -->
+    <div class="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+      <a id="androidBtn" href="#android-section"
+        class="flex items-center justify-center gap-3 bg-white text-orange-600 font-bold px-8 py-4 rounded-2xl card-shadow hover:scale-105 transition-transform">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.523 15.3414C17.2571 15.3414 17.0429 15.1271 17.0429 14.8614V10.5C17.0429 10.2343 17.2571 10.02 17.523 10.02C17.7889 10.02 18.0031 10.2343 18.0031 10.5V14.8614C18.0031 15.1271 17.7889 15.3414 17.523 15.3414ZM6.47699 10.02C6.21109 10.02 5.99693 10.2343 5.99693 10.5V14.8614C5.99693 15.1271 6.21109 15.3414 6.47699 15.3414C6.74289 15.3414 6.95704 15.1271 6.95704 14.8614V10.5C6.95704 10.2343 6.74289 10.02 6.47699 10.02ZM14.8257 17.5629H9.17426V9.48H14.8257V17.5629ZM14.8257 8.52H9.17426L8.28 6.94286C8.19429 6.79286 8.28857 6.6 8.46 6.6H15.54C15.7114 6.6 15.8057 6.79286 15.72 6.94286L14.8257 8.52Z"/>
+        </svg>
+        安卓下载 APK
+      </a>
+      <a href="#ios-section"
+        class="flex items-center justify-center gap-3 bg-white/20 border-2 border-white/40 text-white font-bold px-8 py-4 rounded-2xl hover:bg-white/30 transition-colors">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+        </svg>
+        iOS 内测版
+      </a>
+    </div>
+
+    <p class="text-xs text-orange-200">当前版本 v1.0.0 · 安全无广告 · 数据加密保护</p>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="max-w-4xl mx-auto px-6 py-14">
+  <h2 class="text-2xl font-black text-center text-gray-800 mb-10">为什么选择云引 Guide？</h2>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    {[
+      { emoji: '📸', title: 'AI 拍题分析', desc: '拍照秒识别，AI 自动解析错误知识点' },
+      { emoji: '📖', title: '智能错题本', desc: '错题自动归档，按科目知识点整理' },
+      { emoji: '🎯', title: '单词背诵', desc: '闪卡 + AI 测验，科学间隔复习' },
+      { emoji: '📊', title: '成绩分析', desc: 'AI 诊断成绩趋势，精准定位薄弱点' },
+    ].map((f, i) => '')}
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="feature-card bg-white rounded-2xl p-5 text-center card-shadow">
+      <div class="text-3xl mb-3">📸</div>
+      <h3 class="font-bold text-gray-800 text-sm mb-1">AI 拍题分析</h3>
+      <p class="text-xs text-gray-500">拍照秒识别，自动解析错误知识点</p>
+    </div>
+    <div class="feature-card bg-white rounded-2xl p-5 text-center card-shadow">
+      <div class="text-3xl mb-3">📖</div>
+      <h3 class="font-bold text-gray-800 text-sm mb-1">智能错题本</h3>
+      <p class="text-xs text-gray-500">错题自动归档，按科目知识点整理</p>
+    </div>
+    <div class="feature-card bg-white rounded-2xl p-5 text-center card-shadow">
+      <div class="text-3xl mb-3">🎯</div>
+      <h3 class="font-bold text-gray-800 text-sm mb-1">单词背诵</h3>
+      <p class="text-xs text-gray-500">闪卡 + AI 测验，科学间隔复习</p>
+    </div>
+    <div class="feature-card bg-white rounded-2xl p-5 text-center card-shadow">
+      <div class="text-3xl mb-3">📊</div>
+      <h3 class="font-bold text-gray-800 text-sm mb-1">成绩分析</h3>
+      <p class="text-xs text-gray-500">AI 诊断趋势，精准定位薄弱点</p>
+    </div>
+  </div>
+</section>
+
+<!-- Android Download -->
+<section id="android-section" class="max-w-4xl mx-auto px-6 pb-10">
+  <div class="bg-white rounded-3xl card-shadow p-8">
+    <div class="flex items-start gap-6">
+      <div class="text-5xl">🤖</div>
+      <div class="flex-1">
+        <h3 class="text-xl font-black text-gray-800 mb-2">安卓版下载</h3>
+        <p class="text-sm text-gray-500 mb-4">支持 Android 7.0+，下载 APK 直接安装</p>
+        <div class="bg-orange-50 rounded-2xl p-4 mb-4">
+          <p class="text-sm font-medium text-orange-800 mb-1">📋 安装步骤：</p>
+          <ol class="text-sm text-orange-700 space-y-1 ml-4 list-decimal">
+            <li>点击下方按钮下载 APK 文件</li>
+            <li>手机设置 → 安全 → 允许未知来源安装</li>
+            <li>找到下载的 APK 文件点击安装</li>
+            <li>安装完成后打开即可使用</li>
+          </ol>
+        </div>
+        <div id="apkDownloadArea">
+          <div class="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-6 text-center">
+            <p class="text-2xl mb-2">⏳</p>
+            <p class="text-sm font-medium text-gray-600">APK 构建中</p>
+            <p class="text-xs text-gray-400 mt-1">构建完成后此处将出现下载按钮</p>
+            <p class="text-xs text-gray-400 mt-1">预计 10-15 分钟后可用</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- iOS Section -->
+<section id="ios-section" class="max-w-4xl mx-auto px-6 pb-10">
+  <div class="bg-white rounded-3xl card-shadow p-8">
+    <div class="flex items-start gap-6">
+      <div class="text-5xl">🍎</div>
+      <div class="flex-1">
+        <h3 class="text-xl font-black text-gray-800 mb-2">iOS 版体验</h3>
+        <p class="text-sm text-gray-500 mb-4">iPhone 用户有两种方式体验</p>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="bg-blue-50 rounded-2xl p-4">
+            <p class="font-bold text-blue-800 text-sm mb-2">方式一：Expo Go 扫码（推荐）</p>
+            <ol class="text-sm text-blue-700 space-y-1 ml-4 list-decimal">
+              <li>App Store 搜索 <strong>Expo Go</strong> 并安装</li>
+              <li>扫描下方二维码或点击链接</li>
+              <li>即可在 Expo Go 内体验完整功能</li>
+            </ol>
+            <div class="mt-3 bg-white rounded-xl p-3 text-center">
+              <p class="text-xs text-gray-500">扫码链接即将生成</p>
+              <p class="text-xs text-gray-400">运行 <code class="bg-gray-100 px-1">npx expo start --tunnel</code></p>
+            </div>
+          </div>
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <p class="font-bold text-gray-700 text-sm mb-2">方式二：正式版（即将上线）</p>
+            <p class="text-sm text-gray-500">正在准备 TestFlight 内测资格，上线后可通过 Apple 官方渠道安装正式版。</p>
+            <p class="text-xs text-gray-400 mt-2">留下微信号，上线第一时间通知你</p>
+            <div class="mt-2 bg-white rounded-lg p-2 text-center">
+              <p class="text-sm font-medium text-gray-600">微信：<span class="text-orange-600">yunyinguide_cs</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section class="max-w-4xl mx-auto px-6 pb-10">
+  <div class="grid grid-cols-3 gap-4 text-center">
+    <div class="bg-white rounded-2xl p-5 card-shadow">
+      <p class="text-3xl font-black text-orange-500">免费</p>
+      <p class="text-sm text-gray-500 mt-1">基础功能永久免费</p>
+    </div>
+    <div class="bg-white rounded-2xl p-5 card-shadow">
+      <p class="text-3xl font-black text-orange-500">AI</p>
+      <p class="text-sm text-gray-500 mt-1">DeepSeek 大模型驱动</p>
+    </div>
+    <div class="bg-white rounded-2xl p-5 card-shadow">
+      <p class="text-3xl font-black text-orange-500">🔒</p>
+      <p class="text-sm text-gray-500 mt-1">数据加密安全存储</p>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="text-center py-8 text-sm text-gray-400">
+  <p>云引 Guide · AI 智能 K12 辅导助手</p>
+  <p class="mt-1">© 2026 · 数据安全 · 无广告 · 隐私保护</p>
+</footer>
+
+<script>
+// 检查是否有 APK 下载链接（后续在此处填入真实链接）
+const APK_URL = '';  // 构建完后在此填入 Expo/EAS 生成的 APK 下载地址
+if (APK_URL) {
+  document.getElementById('apkDownloadArea').innerHTML = `
+    <a href="${APK_URL}" class="flex items-center justify-center gap-3 bg-orange-500 hover:bg-orange-600 text-white font-bold px-8 py-4 rounded-2xl transition-colors text-lg">
+      ⬇️ 下载安装包（APK）
+    </a>
+    <p class="text-xs text-gray-400 text-center mt-2">文件大小约 50MB · 需要允许安装未知来源</p>`;
+}
+</script>
+</body>
+</html>
