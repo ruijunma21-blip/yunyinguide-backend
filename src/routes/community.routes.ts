@@ -3,6 +3,15 @@ import { getDb } from '../utils/db';
 import { requireAuth } from '../middleware/auth.middleware';
 import { ok, fail } from '../utils/response';
 
+// 简单 XSS 防护：去除所有 HTML 标签和危险字符
+function sanitize(str: string): string {
+  return str
+    .replace(/<[^>]*>/g, '')          // 去除 HTML 标签
+    .replace(/javascript:/gi, '')      // 去除 js 伪协议
+    .replace(/on\w+\s*=/gi, '')        // 去除事件属性 onclick= 等
+    .trim();
+}
+
 export async function communityRoutes(app: FastifyInstance) {
   // ── 帖子列表 ──────────────────────────────────────────
   app.get('/posts', { preHandler: requireAuth }, async (req, reply) => {
@@ -45,11 +54,14 @@ export async function communityRoutes(app: FastifyInstance) {
     if (!content || content.trim().length < 5) return fail(reply, '内容至少5个字', 400);
     if (content.length > 500) return fail(reply, '内容不超过500字', 400);
 
+    const cleanContent = sanitize(content);
+    if (cleanContent.length < 5) return fail(reply, '内容包含非法字符', 400);
+
     const db = getDb();
     const user = await db.user.findUnique({ where: { id: userId }, select: { nickname: true } });
 
     const post = await db.post.create({
-      data: { userId, content: content.trim(), imageUrl },
+      data: { userId, content: cleanContent, imageUrl },
     });
 
     return ok(reply, {
@@ -116,11 +128,14 @@ export async function communityRoutes(app: FastifyInstance) {
     if (!content || content.trim().length === 0) return fail(reply, '评论不能为空', 400);
     if (content.length > 200) return fail(reply, '评论不超过200字', 400);
 
+    const cleanComment = sanitize(content);
+    if (cleanComment.length === 0) return fail(reply, '评论包含非法字符', 400);
+
     const db = getDb();
     const user = await db.user.findUnique({ where: { id: userId }, select: { nickname: true } });
 
     const [comment] = await db.$transaction([
-      db.comment.create({ data: { postId, userId, content: content.trim() } }),
+      db.comment.create({ data: { postId, userId, content: cleanComment } }),
       db.post.update({ where: { id: postId }, data: { commentCount: { increment: 1 } } }),
     ]);
 

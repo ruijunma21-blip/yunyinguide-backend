@@ -39,6 +39,8 @@ export async function analysisRoutes(app: FastifyInstance) {
     };
 
     if (!imageBase64 || !subject || !grade) return fail(reply, '参数不完整');
+    // 防止超大图片 DoS：base64 字符串约等于原始大小 * 1.33，限制 ~5 MB 图片
+    if (imageBase64.length > 7 * 1024 * 1024) return fail(reply, '图片过大，请压缩后重试', 413);
 
     const today = format(new Date(), 'yyyy-MM-dd');
     const sub = await getDb().subscription.findUnique({ where: { userId } });

@@ -3,6 +3,7 @@ import fastifyJwt from '@fastify/jwt';
 import fastifyCors from '@fastify/cors';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
+import fastifyHelmet from '@fastify/helmet';
 import path from 'path';
 import { env } from './utils/env';
 import { authRoutes } from './routes/auth.routes';
@@ -21,6 +22,10 @@ import { adminRoutes } from './routes/admin.routes';
 const app = Fastify({ logger: { level: env.nodeEnv === 'development' ? 'info' : 'warn' } });
 
 async function buildApp() {
+  await app.register(fastifyHelmet, {
+    // 允许管理后台内联脚本和 Tailwind CDN
+    contentSecurityPolicy: false,
+  });
   await app.register(fastifyCors, { origin: true });
   await app.register(fastifyJwt, { secret: env.jwtSecret });
   await app.register(fastifyRateLimit, { max: 100, timeWindow: '1 minute' });

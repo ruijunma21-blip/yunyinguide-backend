@@ -14,9 +14,16 @@ async function requireAdmin(req: any, reply: any) {
   }
 }
 
+// 管理员登录：每个 IP 每 15 分钟最多 5 次，比普通用户更严格
+const adminLoginRateLimit = {
+  config: {
+    rateLimit: { max: 5, timeWindow: '15 minutes' },
+  },
+};
+
 export async function adminRoutes(app: FastifyInstance) {
   // ── 管理员登录 ────────────────────────────────────────
-  app.post('/admin/login', async (req, reply) => {
+  app.post('/admin/login', adminLoginRateLimit, async (req, reply) => {
     const { email, password } = req.body as { email: string; password: string };
     if (email !== env.adminEmail) return fail(reply, '账号或密码错误');
     const ok_ = await bcrypt.compare(password, env.adminPasswordHash);
