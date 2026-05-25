@@ -19,6 +19,11 @@ async function getAccessToken(): Promise<string> {
 }
 
 export async function recognizeText(imageBase64: string): Promise<string> {
+  // 没有配置百度 OCR key 时，返回空字符串让上层给用户友好提示
+  if (!env.baiduOcrApiKey || !env.baiduOcrSecretKey) {
+    return '';
+  }
+
   const cacheKey = `ocr:${crypto.createHash('md5').update(imageBase64.slice(0, 100)).digest('hex')}`;
   const cached = await cacheGet<string>(cacheKey);
   if (cached) return cached;

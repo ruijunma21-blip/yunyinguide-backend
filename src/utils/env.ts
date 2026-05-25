@@ -10,6 +10,8 @@ export const env = {
   baiduOcrSecretKey: process.env.BAIDU_OCR_SECRET_KEY ?? '',
   jpushAppKey: process.env.JPUSH_APP_KEY ?? '',
   jpushMasterSecret: process.env.JPUSH_MASTER_SECRET ?? '',
+  adminEmail: process.env.ADMIN_EMAIL ?? 'ruijunma21@gmail.com',
+  adminPasswordHash: process.env.ADMIN_PASSWORD_HASH ?? '$2b$10$wV5gV7AEe2mqKjELXDyH0eKlKn8Q2WP.RMcNV4NOqnZrTD6Md/xXS',
   port: parseInt(process.env.PORT ?? '3000', 10),
   nodeEnv: process.env.NODE_ENV ?? 'development',
   freeUsageLimit: 3,

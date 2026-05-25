@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import fastifyJwt from '@fastify/jwt';
 import fastifyCors from '@fastify/cors';
 import fastifyRateLimit from '@fastify/rate-limit';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
 import { env } from './utils/env';
 import { authRoutes } from './routes/auth.routes';
 import { analysisRoutes } from './routes/analysis.routes';
@@ -14,6 +16,7 @@ import { vocabRoutes } from './routes/vocab.routes';
 import { gradesRoutes } from './routes/grades.routes';
 import { planRoutes } from './routes/plan.routes';
 import { communityRoutes } from './routes/community.routes';
+import { adminRoutes } from './routes/admin.routes';
 
 const app = Fastify({ logger: { level: env.nodeEnv === 'development' ? 'info' : 'warn' } });
 
@@ -21,6 +24,12 @@ async function buildApp() {
   await app.register(fastifyCors, { origin: true });
   await app.register(fastifyJwt, { secret: env.jwtSecret });
   await app.register(fastifyRateLimit, { max: 100, timeWindow: '1 minute' });
+
+  // 静态文件（管理后台页面）
+  await app.register(fastifyStatic, {
+    root: path.join(__dirname, '../public'),
+    prefix: '/',
+  });
 
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
@@ -36,6 +45,7 @@ async function buildApp() {
   await app.register(gradesRoutes, { prefix: '/api/v1/grades' });
   await app.register(planRoutes, { prefix: '/api/v1/plan' });
   await app.register(communityRoutes, { prefix: '/api/v1/community' });
+  await app.register(adminRoutes, { prefix: '/api/v1' });
 
   app.setErrorHandler((error: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(error);

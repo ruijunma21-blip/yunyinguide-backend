@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 云引 Guide · 管理后台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }
+  .tab-active { border-bottom: 2px solid #F97316; color: #F97316; }
+  .badge-premium { background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; }
+  .badge-free { background:#F5F5F5; color:#57534E; }
+  .badge-active { background:#DCFCE7; color:#15803D; }
+  .badge-pending { background:#FEF9C3; color:#A16207; }
+  .badge-completed { background:#DCFCE7; color:#15803D; }
+  .badge-hidden { background:#FEE2E2; color:#DC2626; }
+  .toast { position:fixed; top:20px; right:20px; z-index:9999; transition:all .3s; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- Toast -->
+<div id="toast" class="toast hidden px-4 py-2 rounded-lg text-sm font-medium shadow-lg"></div>
+
+<!-- Login -->
+<div id="loginPage" class="min-h-screen flex items-center justify-center">
+  <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
+    <div class="text-center mb-6">
+      <div class="text-3xl mb-2">🎯</div>
+      <h1 class="text-xl font-bold text-gray-800">AI 云引 Guide</h1>
+      <p class="text-sm text-gray-500 mt-1">管理后台</p>
+    </div>
+    <div class="space-y-4">
+      <input id="loginEmail" type="email" placeholder="管理员邮箱"
+        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm">
+      <input id="loginPassword" type="password" placeholder="密码"
+        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm">
+      <button onclick="login()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl transition text-sm">
+        登录
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="mainPage" class="hidden">
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-100 sticky top-0 z-10">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">🎯</span>
+        <span class="font-bold text-gray-800">AI 云引 Guide 管理后台</span>
+      </div>
+      <button onclick="logout()" class="text-sm text-gray-500 hover:text-red-500">退出登录</button>
+    </div>
+    <!-- Tabs -->
+    <div class="max-w-6xl mx-auto px-4 flex gap-6 text-sm">
+      <button onclick="switchTab('dashboard')" id="tab-dashboard" class="py-3 font-medium text-gray-500 hover:text-orange-500 tab-active">数据总览</button>
+      <button onclick="switchTab('users')" id="tab-users" class="py-3 font-medium text-gray-500 hover:text-orange-500">用户管理</button>
+      <button onclick="switchTab('posts')" id="tab-posts" class="py-3 font-medium text-gray-500 hover:text-orange-500">帖子审核</button>
+      <button onclick="switchTab('orders')" id="tab-orders" class="py-3 font-medium text-gray-500 hover:text-orange-500">订单管理</button>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Dashboard Tab -->
+    <div id="content-dashboard">
+      <div id="statsGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl p-4 shadow-sm animate-pulse h-24"></div>
+        <div class="bg-white rounded-xl p-4 shadow-sm animate-pulse h-24"></div>
+        <div class="bg-white rounded-xl p-4 shadow-sm animate-pulse h-24"></div>
+        <div class="bg-white rounded-xl p-4 shadow-sm animate-pulse h-24"></div>
+      </div>
+    </div>
+
+    <!-- Users Tab -->
+    <div id="content-users" class="hidden">
+      <div class="flex gap-3 mb-4">
+        <input id="userSearch" type="text" placeholder="搜索手机号或昵称…" onkeydown="if(event.key==='Enter')loadUsers(1)"
+          class="flex-1 px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm">
+        <button onclick="loadUsers(1)" class="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium">搜索</button>
+      </div>
+      <div id="usersTable" class="bg-white rounded-xl shadow-sm overflow-hidden"></div>
+      <div id="usersPager" class="mt-3 flex justify-center gap-2 text-sm"></div>
+    </div>
+
+    <!-- Posts Tab -->
+    <div id="content-posts" class="hidden">
+      <div class="flex gap-2 mb-4">
+        <button onclick="loadPosts(1,'published')" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm hover:border-orange-400">已发布</button>
+        <button onclick="loadPosts(1,'hidden')" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm hover:border-orange-400">已隐藏</button>
+        <button onclick="loadPosts(1,'')" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm hover:border-orange-400">全部</button>
+      </div>
+      <div id="postsTable" class="bg-white rounded-xl shadow-sm overflow-hidden"></div>
+      <div id="postsPager" class="mt-3 flex justify-center gap-2 text-sm"></div>
+    </div>
+
+    <!-- Orders Tab -->
+    <div id="content-orders" class="hidden">
+      <div class="flex gap-2 mb-4">
+        <button onclick="loadOrders(1,'pending')" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm hover:border-orange-400">待处理</button>
+        <button onclick="loadOrders(1,'completed')" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm hover:border-orange-400">已完成</button>
+        <button onclick="loadOrders(1,'')" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm hover:border-orange-400">全部</button>
+      </div>
+      <div id="ordersTable" class="bg-white rounded-xl shadow-sm overflow-hidden"></div>
+      <div id="ordersPager" class="mt-3 flex justify-center gap-2 text-sm"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const API = '';  // 同源，相对路径
+let token = localStorage.getItem('adminToken');
+let currentTab = 'dashboard';
+
+// ── Utils ─────────────────────────────────────────────────
+function showToast(msg, ok=true) {
+  const el = document.getElementById('toast');
+  el.className = `toast px-4 py-2 rounded-lg text-sm font-medium shadow-lg ${ok?'bg-green-500':'bg-red-500'} text-white`;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 2500);
+}
+
+async function api(path, opts={}) {
+  const res = await fetch(API + '/api/v1' + path, {
+    headers: { 'Content-Type':'application/json', ...(token?{'Authorization':'Bearer '+token}:{}) },
+    ...opts,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || '请求失败');
+  return data.data;
+}
+
+function badge(text, cls) {
+  return `<span class="px-2 py-0.5 rounded-full text-xs font-medium ${cls}">${text}</span>`;
+}
+
+function fmt(iso) {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleDateString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+
+function pager(id, currentPage, totalPages, cb) {
+  const el = document.getElementById(id);
+  if (totalPages <= 1) { el.innerHTML=''; return; }
+  let html = '';
+  for (let i=1; i<=totalPages; i++) {
+    html += `<button onclick="${cb}(${i})" class="px-3 py-1 rounded ${i===currentPage?'bg-orange-500 text-white':'bg-white border border-gray-200 hover:border-orange-400'}">${i}</button>`;
+  }
+  el.innerHTML = html;
+}
+
+// ── Auth ──────────────────────────────────────────────────
+async function login() {
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  try {
+    const data = await api('/admin/login', { method:'POST', body: JSON.stringify({email,password}) });
+    token = data.token;
+    localStorage.setItem('adminToken', token);
+    showDashboard();
+  } catch(e) { showToast(e.message, false); }
+}
+
+function logout() {
+  localStorage.removeItem('adminToken');
+  token = null;
+  document.getElementById('loginPage').classList.remove('hidden');
+  document.getElementById('mainPage').classList.add('hidden');
+}
+
+function showDashboard() {
+  document.getElementById('loginPage').classList.add('hidden');
+  document.getElementById('mainPage').classList.remove('hidden');
+  loadStats();
+}
+
+if (token) showDashboard();
+
+// ── Tabs ──────────────────────────────────────────────────
+function switchTab(tab) {
+  ['dashboard','users','posts','orders'].forEach(t => {
+    document.getElementById('content-'+t).classList.add('hidden');
+    document.getElementById('tab-'+t).classList.remove('tab-active');
+    document.getElementById('tab-'+t).classList.add('text-gray-500');
+  });
+  document.getElementById('content-'+tab).classList.remove('hidden');
+  document.getElementById('tab-'+tab).classList.add('tab-active');
+  document.getElementById('tab-'+tab).classList.remove('text-gray-500');
+  currentTab = tab;
+  if (tab==='users') loadUsers(1);
+  if (tab==='posts') loadPosts(1,'published');
+  if (tab==='orders') loadOrders(1,'pending');
+}
+
+// ── Stats ─────────────────────────────────────────────────
+async function loadStats() {
+  const s = await api('/admin/stats');
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="bg-white rounded-xl p-4 shadow-sm">
+      <p class="text-xs text-gray-500 mb-1">总用户数</p>
+      <p class="text-2xl font-bold text-gray-800">${s.totalUsers}</p>
+      <p class="text-xs text-green-500 mt-1">今日新增 +${s.todayUsers}</p>
+    </div>
+    <div class="bg-white rounded-xl p-4 shadow-sm">
+      <p class="text-xs text-gray-500 mb-1">付费会员</p>
+      <p class="text-2xl font-bold text-orange-500">${s.premiumUsers}</p>
+      <p class="text-xs text-gray-400 mt-1">转化率 ${s.totalUsers>0?(s.premiumUsers/s.totalUsers*100).toFixed(1):'0'}%</p>
+    </div>
+    <div class="bg-white rounded-xl p-4 shadow-sm">
+      <p class="text-xs text-gray-500 mb-1">今日AI调用</p>
+      <p class="text-2xl font-bold text-blue-500">${s.todayAiCalls}</p>
+      <p class="text-xs text-gray-400 mt-1">累计错题 ${s.totalErrorRecords}</p>
+    </div>
+    <div class="bg-white rounded-xl p-4 shadow-sm">
+      <p class="text-xs text-gray-500 mb-1">待处理订单</p>
+      <p class="text-2xl font-bold ${s.pendingOrders>0?'text-red-500':'text-gray-400'}">${s.pendingOrders}</p>
+      <p class="text-xs text-gray-400 mt-1">社区帖子 ${s.totalPosts}</p>
+    </div>
+  `;
+  if (s.pendingOrders > 0) showToast(`⚠️ 有 ${s.pendingOrders} 笔订单待处理`, true);
+}
+
+// ── Users ─────────────────────────────────────────────────
+let usersCurrentPage = 1;
+async function loadUsers(page=1) {
+  usersCurrentPage = page;
+  const search = document.getElementById('userSearch')?.value || '';
+  const data = await api(`/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
+  const rows = data.items.map(u => `
+    <tr class="border-t border-gray-50 hover:bg-gray-50">
+      <td class="px-4 py-3 text-sm text-gray-600">${u.phone}</td>
+      <td class="px-4 py-3 text-sm font-medium">${u.nickname||'-'}</td>
+      <td class="px-4 py-3">${u.isPremium ? badge('会员',`badge-premium`) : badge('免费','badge-free')}</td>
+      <td class="px-4 py-3 text-xs text-gray-400">${u.isPremium ? '到期 '+fmt(u.premiumEndAt) : ''}</td>
+      <td class="px-4 py-3 text-xs text-gray-400">${fmt(u.createdAt)}</td>
+      <td class="px-4 py-3">
+        <div class="flex gap-2">
+          <button onclick="grantPremium('${u.id}',1,'monthly')" class="px-2 py-1 text-xs bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100">+1月</button>
+          <button onclick="grantPremium('${u.id}',12,'yearly')" class="px-2 py-1 text-xs bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100">+1年</button>
+          ${u.status==='active'
+            ? `<button onclick="setUserStatus('${u.id}','banned')" class="px-2 py-1 text-xs bg-red-50 text-red-500 rounded-lg hover:bg-red-100">封号</button>`
+            : `<button onclick="setUserStatus('${u.id}','active')" class="px-2 py-1 text-xs bg-green-50 text-green-600 rounded-lg hover:bg-green-100">恢复</button>`
+          }
+        </div>
+      </td>
+    </tr>`).join('');
+  document.getElementById('usersTable').innerHTML = `
+    <table class="w-full">
+      <thead><tr class="bg-gray-50 text-xs text-gray-500">
+        <th class="px-4 py-3 text-left">手机号</th>
+        <th class="px-4 py-3 text-left">昵称</th>
+        <th class="px-4 py-3 text-left">状态</th>
+        <th class="px-4 py-3 text-left">到期时间</th>
+        <th class="px-4 py-3 text-left">注册时间</th>
+        <th class="px-4 py-3 text-left">操作</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="px-4 py-2 text-xs text-gray-400 border-t">共 ${data.total} 名用户</div>
+  `;
+  pager('usersPager', page, data.pages, 'loadUsers');
+}
+
+async function grantPremium(userId, months, plan) {
+  if (!confirm(`确认开通 ${months} 个月会员？`)) return;
+  try {
+    const d = await api(`/admin/users/${userId}/grant-premium`, { method:'POST', body:JSON.stringify({months,plan}) });
+    showToast(d.message);
+    loadUsers(usersCurrentPage);
+  } catch(e) { showToast(e.message, false); }
+}
+
+async function setUserStatus(userId, status) {
+  try {
+    await api(`/admin/users/${userId}/status`, { method:'PATCH', body:JSON.stringify({status}) });
+    showToast(status==='banned'?'已封号':'已恢复');
+    loadUsers(usersCurrentPage);
+  } catch(e) { showToast(e.message, false); }
+}
+
+// ── Posts ─────────────────────────────────────────────────
+let postsCurrentPage = 1, postsCurrentStatus = 'published';
+async function loadPosts(page=1, status='published') {
+  postsCurrentPage = page; postsCurrentStatus = status;
+  const data = await api(`/admin/posts?page=${page}&status=${status}`);
+  const rows = data.items.map(p => `
+    <tr class="border-t border-gray-50 hover:bg-gray-50">
+      <td class="px-4 py-3 text-sm max-w-xs truncate" title="${p.content}">${p.content}</td>
+      <td class="px-4 py-3 text-sm text-gray-500">${p.author?.nickname||'-'}</td>
+      <td class="px-4 py-3">
+        ${p.status==='published' ? badge('已发布','badge-active') : badge('已隐藏','badge-hidden')}
+      </td>
+      <td class="px-4 py-3 text-xs text-gray-400">👍${p.likeCount} 💬${p.commentCount}</td>
+      <td class="px-4 py-3 text-xs text-gray-400">${fmt(p.createdAt)}</td>
+      <td class="px-4 py-3">
+        ${p.status==='published'
+          ? `<button onclick="setPostStatus('${p.id}','hidden')" class="px-2 py-1 text-xs bg-red-50 text-red-500 rounded-lg hover:bg-red-100">隐藏</button>`
+          : `<button onclick="setPostStatus('${p.id}','published')" class="px-2 py-1 text-xs bg-green-50 text-green-600 rounded-lg hover:bg-green-100">恢复</button>`
+        }
+      </td>
+    </tr>`).join('');
+  document.getElementById('postsTable').innerHTML = `
+    <table class="w-full">
+      <thead><tr class="bg-gray-50 text-xs text-gray-500">
+        <th class="px-4 py-3 text-left">内容</th>
+        <th class="px-4 py-3 text-left">作者</th>
+        <th class="px-4 py-3 text-left">状态</th>
+        <th class="px-4 py-3 text-left">互动</th>
+        <th class="px-4 py-3 text-left">时间</th>
+        <th class="px-4 py-3 text-left">操作</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="px-4 py-2 text-xs text-gray-400 border-t">共 ${data.total} 条帖子</div>
+  `;
+  pager('postsPager', page, data.pages, `(p)=>loadPosts(p,'${status}')`);
+}
+
+async function setPostStatus(postId, status) {
+  try {
+    await api(`/admin/posts/${postId}/status`, { method:'PATCH', body:JSON.stringify({status}) });
+    showToast(status==='hidden'?'帖子已隐藏':'帖子已恢复');
+    loadPosts(postsCurrentPage, postsCurrentStatus);
+  } catch(e) { showToast(e.message, false); }
+}
+
+// ── Orders ────────────────────────────────────────────────
+let ordersCurrentPage = 1, ordersCurrentStatus = 'pending';
+async function loadOrders(page=1, status='pending') {
+  ordersCurrentPage = page; ordersCurrentStatus = status;
+  const data = await api(`/admin/orders?page=${page}&status=${status}`);
+  const planMap = { monthly:'月度', yearly:'年度' };
+  const rows = data.items.map(o => `
+    <tr class="border-t border-gray-50 hover:bg-gray-50">
+      <td class="px-4 py-3 text-sm font-medium">${o.user?.nickname||'-'}</td>
+      <td class="px-4 py-3 text-sm text-gray-500">${o.user?.phone||'-'}</td>
+      <td class="px-4 py-3 text-sm">${planMap[o.planType]||o.planType}会员</td>
+      <td class="px-4 py-3 text-sm font-bold text-orange-600">¥${(o.amount/100||o.amount)}</td>
+      <td class="px-4 py-3 text-sm">${o.paymentMethod==='wechat'?'微信':'支付宝'}</td>
+      <td class="px-4 py-3">
+        ${o.status==='pending' ? badge('待确认','badge-pending') : badge('已完成','badge-completed')}
+      </td>
+      <td class="px-4 py-3 text-xs text-gray-400">${fmt(o.createdAt)}</td>
+      <td class="px-4 py-3">
+        ${o.status==='pending'
+          ? `<button onclick="completeOrder('${o.id}')" class="px-3 py-1 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-medium">确认付款 ✓</button>`
+          : ''
+        }
+      </td>
+    </tr>`).join('');
+  document.getElementById('ordersTable').innerHTML = `
+    <table class="w-full">
+      <thead><tr class="bg-gray-50 text-xs text-gray-500">
+        <th class="px-4 py-3 text-left">昵称</th>
+        <th class="px-4 py-3 text-left">手机号</th>
+        <th class="px-4 py-3 text-left">套餐</th>
+        <th class="px-4 py-3 text-left">金额</th>
+        <th class="px-4 py-3 text-left">支付方式</th>
+        <th class="px-4 py-3 text-left">状态</th>
+        <th class="px-4 py-3 text-left">时间</th>
+        <th class="px-4 py-3 text-left">操作</th>
+      </tr></thead>
+      <tbody>${rows||'<tr><td colspan="8" class="px-4 py-8 text-center text-gray-400 text-sm">暂无订单</td></tr>'}</tbody>
+    </table>
+    <div class="px-4 py-2 text-xs text-gray-400 border-t">共 ${data.total} 笔订单</div>
+  `;
+  pager('ordersPager', page, data.pages, `(p)=>loadOrders(p,'${status}')`);
+}
+
+async function completeOrder(orderId) {
+  if (!confirm('确认已收到付款？点击确认将自动开通用户会员。')) return;
+  try {
+    const d = await api(`/admin/orders/${orderId}/complete`, { method:'POST' });
+    showToast('✅ ' + d.message);
+    loadOrders(ordersCurrentPage, ordersCurrentStatus);
+    loadStats();
+  } catch(e) { showToast(e.message, false); }
+}
+
+// Enter 键登录
+document.getElementById('loginPassword').addEventListener('keydown', e => {
+  if (e.key === 'Enter') login();
+});
+</script>
+</body>
+</html>

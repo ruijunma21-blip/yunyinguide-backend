@@ -58,7 +58,15 @@ export async function analysisRoutes(app: FastifyInstance) {
       return fail(reply, 'OCR识别失败，请重新拍照');
     }
 
-    if (!questionText) return fail(reply, '无法识别图片文字，请确保拍照清晰');
+    if (!questionText) {
+      // OCR 未配置或图片无法识别时，允许通过 questionText 字段直接传入题目文字
+      const bodyText = (req.body as any).questionText as string | undefined;
+      if (bodyText?.trim()) {
+        questionText = bodyText.trim();
+      } else {
+        return fail(reply, '图片识别失败，请手动输入题目内容', 422);
+      }
+    }
 
     let analysisRaw;
     try {
