@@ -18,6 +18,7 @@ import { gradesRoutes } from './routes/grades.routes';
 import { planRoutes } from './routes/plan.routes';
 import { communityRoutes } from './routes/community.routes';
 import { adminRoutes } from './routes/admin.routes';
+import { announcementRoutes } from './routes/announcement.routes';
 
 const app = Fastify({ logger: { level: env.nodeEnv === 'development' ? 'info' : 'warn' } });
 
@@ -51,6 +52,7 @@ async function buildApp() {
   await app.register(planRoutes, { prefix: '/api/v1/plan' });
   await app.register(communityRoutes, { prefix: '/api/v1/community' });
   await app.register(adminRoutes, { prefix: '/api/v1' });
+  await app.register(announcementRoutes, { prefix: '/api/v1' });
 
   app.setErrorHandler((error: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(error);

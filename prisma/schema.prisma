@@ -230,3 +230,16 @@ model PostLike {
 
   @@unique([postId, userId])
 }
+
+// ── 系统公告模块 ──────────────────────────────────────────
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  type      String   @default("info") // info | warning | urgent
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

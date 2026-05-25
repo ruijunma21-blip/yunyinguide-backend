@@ -59,6 +59,7 @@
       <button onclick="switchTab('users')" id="tab-users" class="py-3 font-medium text-gray-500 hover:text-orange-500">用户管理</button>
       <button onclick="switchTab('posts')" id="tab-posts" class="py-3 font-medium text-gray-500 hover:text-orange-500">帖子审核</button>
       <button onclick="switchTab('orders')" id="tab-orders" class="py-3 font-medium text-gray-500 hover:text-orange-500">订单管理</button>
+      <button onclick="switchTab('announcements')" id="tab-announcements" class="py-3 font-medium text-gray-500 hover:text-orange-500">系统公告</button>
     </div>
   </header>
 
@@ -104,6 +105,32 @@
       </div>
       <div id="ordersTable" class="bg-white rounded-xl shadow-sm overflow-hidden"></div>
       <div id="ordersPager" class="mt-3 flex justify-center gap-2 text-sm"></div>
+    </div>
+
+    <!-- Announcements Tab -->
+    <div id="content-announcements" class="hidden">
+      <!-- Create form -->
+      <div class="bg-white rounded-xl shadow-sm p-5 mb-5">
+        <h3 class="font-semibold text-gray-700 mb-4 text-sm">发布新公告</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+          <input id="ann-title" type="text" placeholder="公告标题（必填）"
+            class="px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm col-span-2">
+          <select id="ann-type" class="px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm">
+            <option value="info">📢 普通公告</option>
+            <option value="warning">⚠️ 注意事项</option>
+            <option value="urgent">🔴 紧急通知</option>
+          </select>
+        </div>
+        <textarea id="ann-content" rows="3" placeholder="公告内容（必填）"
+          class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm mb-3 resize-none"></textarea>
+        <div class="flex gap-3 items-center">
+          <input id="ann-sort" type="number" value="0" placeholder="排序权重（数字越大越靠前）"
+            class="w-44 px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm">
+          <button onclick="createAnnouncement()" class="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-medium">发布公告</button>
+        </div>
+      </div>
+      <!-- List -->
+      <div id="annList" class="space-y-3"></div>
     </div>
   </main>
 </div>
@@ -180,7 +207,7 @@ if (token) showDashboard();
 
 // ── Tabs ──────────────────────────────────────────────────
 function switchTab(tab) {
-  ['dashboard','users','posts','orders'].forEach(t => {
+  ['dashboard','users','posts','orders','announcements'].forEach(t => {
     document.getElementById('content-'+t).classList.add('hidden');
     document.getElementById('tab-'+t).classList.remove('tab-active');
     document.getElementById('tab-'+t).classList.add('text-gray-500');
@@ -192,6 +219,7 @@ function switchTab(tab) {
   if (tab==='users') loadUsers(1);
   if (tab==='posts') loadPosts(1,'published');
   if (tab==='orders') loadOrders(1,'pending');
+  if (tab==='announcements') loadAnnouncements();
 }
 
 // ── Stats ─────────────────────────────────────────────────
@@ -376,6 +404,70 @@ async function completeOrder(orderId) {
     showToast('✅ ' + d.message);
     loadOrders(ordersCurrentPage, ordersCurrentStatus);
     loadStats();
+  } catch(e) { showToast(e.message, false); }
+}
+
+// ── Announcements ─────────────────────────────────────────
+async function loadAnnouncements() {
+  const items = await api('/admin/announcements');
+  const typeMap = { info:'📢 普通', warning:'⚠️ 注意', urgent:'🔴 紧急' };
+  const typeColor = { info:'bg-blue-50 text-blue-700', warning:'bg-yellow-50 text-yellow-700', urgent:'bg-red-50 text-red-600' };
+  if (!items.length) {
+    document.getElementById('annList').innerHTML = '<p class="text-center text-gray-400 text-sm py-8">暂无公告</p>';
+    return;
+  }
+  document.getElementById('annList').innerHTML = items.map(a => `
+    <div class="bg-white rounded-xl shadow-sm p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="px-2 py-0.5 rounded text-xs font-medium ${typeColor[a.type]||typeColor.info}">${typeMap[a.type]||a.type}</span>
+            <span class="font-semibold text-gray-800 text-sm">${a.title}</span>
+            ${a.isActive ? '<span class="px-2 py-0.5 rounded text-xs bg-green-50 text-green-600">已启用</span>' : '<span class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-400">已禁用</span>'}
+          </div>
+          <p class="text-sm text-gray-600 leading-relaxed">${a.content}</p>
+          <p class="text-xs text-gray-400 mt-1">${fmt(a.createdAt)} · 排序权重 ${a.sortOrder}</p>
+        </div>
+        <div class="flex flex-col gap-1.5 shrink-0">
+          ${a.isActive
+            ? `<button onclick="toggleAnnouncement('${a.id}',false)" class="px-3 py-1 text-xs bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200">禁用</button>`
+            : `<button onclick="toggleAnnouncement('${a.id}',true)" class="px-3 py-1 text-xs bg-green-50 text-green-600 rounded-lg hover:bg-green-100">启用</button>`
+          }
+          <button onclick="deleteAnnouncement('${a.id}')" class="px-3 py-1 text-xs bg-red-50 text-red-500 rounded-lg hover:bg-red-100">删除</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function createAnnouncement() {
+  const title = document.getElementById('ann-title').value.trim();
+  const content = document.getElementById('ann-content').value.trim();
+  const type = document.getElementById('ann-type').value;
+  const sortOrder = parseInt(document.getElementById('ann-sort').value) || 0;
+  if (!title || !content) { showToast('请填写标题和内容', false); return; }
+  try {
+    await api('/admin/announcements', { method:'POST', body: JSON.stringify({title,content,type,sortOrder}) });
+    showToast('✅ 公告已发布');
+    document.getElementById('ann-title').value = '';
+    document.getElementById('ann-content').value = '';
+    loadAnnouncements();
+  } catch(e) { showToast(e.message, false); }
+}
+
+async function toggleAnnouncement(id, isActive) {
+  try {
+    await api(`/admin/announcements/${id}`, { method:'PATCH', body: JSON.stringify({isActive}) });
+    showToast(isActive ? '公告已启用' : '公告已禁用');
+    loadAnnouncements();
+  } catch(e) { showToast(e.message, false); }
+}
+
+async function deleteAnnouncement(id) {
+  if (!confirm('确认删除该公告？')) return;
+  try {
+    await api(`/admin/announcements/${id}`, { method:'DELETE' });
+    showToast('已删除');
+    loadAnnouncements();
   } catch(e) { showToast(e.message, false); }
 }
 
