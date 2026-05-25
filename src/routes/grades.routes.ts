@@ -51,7 +51,7 @@ export async function gradesRoutes(app: FastifyInstance) {
       take: 30,
     });
     if (grades.length === 0) return fail(reply, '暂无成绩数据', 404);
-    const analysis = await aiService.analyzeGrades(grades);
+    const analysis = await aiService.analyzeGrades(grades.map(g => ({ ...g, examDate: g.examDate.toISOString() })));
     return ok(reply, analysis);
   });
 
