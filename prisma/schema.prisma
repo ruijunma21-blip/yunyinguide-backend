@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String         @id @default(uuid())
+  phone        String         @unique
+  nickname     String         @default("")
+  avatarUrl    String?
+  passwordHash String?
+  status       String         @default("active")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  children     Child[]
+  errorRecords ErrorRecord[]
+  subscription Subscription?
+  orders       Order[]
+  dailyUsage   DailyUsage[]
+  smsCode      SmsCode?
+  vocabLists   VocabList[]
+  examGrades   ExamGrade[]
+  studyPlans   StudyPlan[]
+  posts        Post[]
+  comments     Comment[]
+  postLikes    PostLike[]
+}
+
+model Child {
+  id           String        @id @default(uuid())
+  userId       String
+  nickname     String
+  grade        Int
+  createdAt    DateTime      @default(now())
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  errorRecords ErrorRecord[]
+}
+
+model ErrorRecord {
+  id              String   @id @default(uuid())
+  userId          String
+  childId         String
+  subject         String
+  grade           Int
+  questionText    String
+  studentAnswer   String   @default("")
+  correctAnswer   String   @default("")
+  imageUrl        String?
+  errorType       String
+  knowledgePoint  String
+  gradeLevel      String
+  textbookChapter String   @default("")
+  errorSummary    String
+  detailAnalysis  String
+  confidence      Int
+  similarMistakes String[] @default([])
+  guideScript     Json?
+  status          String   @default("reviewing")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  child           Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  planType  String   @default("free")
+  startAt   DateTime @default(now())
+  endAt     DateTime?
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id            String   @id @default(uuid())
+  userId        String
+  amount        Int
+  planType      String
+  paymentMethod String
+  paymentId     String?
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DailyUsage {
+  id         String   @id @default(uuid())
+  userId     String
+  date       String
+  usageCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}
+
+model SmsCode {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  phone     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── 英语单词模块 ──────────────────────────────────────────
+
+model VocabList {
+  id        String      @id @default(uuid())
+  userId    String
+  childId   String?
+  name      String
+  source    String      @default("manual") // manual | scan | textbook
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  words     VocabWord[]
+}
+
+model VocabWord {
+  id            String        @id @default(uuid())
+  listId        String
+  word          String
+  phonetic      String        @default("")
+  meaning       String        // 中文释义
+  example       String        @default("") // 例句
+  imageUrl      String?
+  mastery       Int           @default(0)  // 0-5 掌握程度
+  nextReviewAt  DateTime      @default(now())
+  reviewCount   Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  list          VocabList     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  reviewLogs    VocabReview[]
+}
+
+model VocabReview {
+  id        String    @id @default(uuid())
+  wordId    String
+  result    String    // correct | wrong | skip
+  createdAt DateTime  @default(now())
+  word      VocabWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
+}
+
+// ── 成绩分析模块 ──────────────────────────────────────────
+
+model ExamGrade {
+  id        String   @id @default(uuid())
+  userId    String
+  childId   String
+  subject   String
+  score     Float
+  fullScore Float    @default(100)
+  examName  String   @default("")
+  examDate  DateTime @default(now())
+  semester  String   @default("") // 2024-spring
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── 学习计划模块 ──────────────────────────────────────────
+
+model StudyPlan {
+  id          String        @id @default(uuid())
+  userId      String
+  childId     String
+  title       String
+  vocabGoal   Int           @default(0) // 每日背单词数
+  reviewGoal  Int           @default(0) // 每日复习题目数
+  activeFrom  DateTime      @default(now())
+  activeTo    DateTime?
+  createdAt   DateTime      @default(now())
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  records     StudyRecord[]
+}
+
+model StudyRecord {
+  id            String    @id @default(uuid())
+  planId        String
+  date          String    // YYYY-MM-DD
+  vocabDone     Int       @default(0)
+  reviewDone    Int       @default(0)
+  completed     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  plan          StudyPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, date])
+}
+
+// ── 亲子社区模块 ──────────────────────────────────────────
+
+model Post {
+  id           String        @id @default(uuid())
+  userId       String
+  content      String
+  imageUrl     String?
+  likeCount    Int           @default(0)
+  commentCount Int           @default(0)
+  status       String        @default("published") // published | hidden
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments     Comment[]
+  likes        PostLike[]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}

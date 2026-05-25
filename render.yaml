@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: yunyinguide-backend
+    runtime: node
+    buildCommand: npm install && npm run db:generate && npm run build
+    startCommand: node dist/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false          # 在 Render Dashboard 手动填写 Neon 连接串
+      - key: REDIS_URL
+        sync: false          # 在 Render Dashboard 手动填写 Upstash Redis URL
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: BAIDU_OCR_API_KEY
+        sync: false
+      - key: BAIDU_OCR_SECRET_KEY
+        sync: false
