@@ -92,12 +92,11 @@
           </ol>
         </div>
         <div id="apkDownloadArea">
-          <div class="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-6 text-center">
-            <p class="text-2xl mb-2">⏳</p>
-            <p class="text-sm font-medium text-gray-600">APK 构建中</p>
-            <p class="text-xs text-gray-400 mt-1">构建完成后此处将出现下载按钮</p>
-            <p class="text-xs text-gray-400 mt-1">预计 10-15 分钟后可用</p>
-          </div>
+          <a href="https://github.com/ruijunma21-blip/yunyinguide-backend/releases/download/v1.0.0/yunyinguide-v1.0.0.apk"
+            class="flex items-center justify-center gap-3 bg-orange-500 hover:bg-orange-600 text-white font-bold px-8 py-4 rounded-2xl transition-colors text-lg">
+            ⬇️ 下载安装包（APK）
+          </a>
+          <p class="text-xs text-gray-400 text-center mt-2">文件大小约 80MB · 需要允许安装未知来源</p>
         </div>
       </div>
     </div>
@@ -164,16 +163,5 @@
   <p class="mt-1">© 2026 · 数据安全 · 无广告 · 隐私保护</p>
 </footer>
 
-<script>
-// 检查是否有 APK 下载链接（后续在此处填入真实链接）
-const APK_URL = 'https://github.com/ruijunma21-blip/yunyinguide-backend/releases/download/v1.0.0/yunyinguide-v1.0.0.apk';
-if (APK_URL) {
-  document.getElementById('apkDownloadArea').innerHTML = `
-    <a href="${APK_URL}" class="flex items-center justify-center gap-3 bg-orange-500 hover:bg-orange-600 text-white font-bold px-8 py-4 rounded-2xl transition-colors text-lg">
-      ⬇️ 下载安装包（APK）
-    </a>
-    <p class="text-xs text-gray-400 text-center mt-2">文件大小约 80MB · 需要允许安装未知来源</p>`;
-}
-</script>
 </body>
 </html>
