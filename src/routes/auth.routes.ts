@@ -3,6 +3,7 @@ import { getDb } from '../utils/db';
 import * as bcrypt from 'bcryptjs';
 import { ok, fail } from '../utils/response';
 import { requireAuth } from '../middleware/auth.middleware';
+import { addPoints } from './invite.routes';
 
 // 注册/登录：每个 IP 每 15 分钟最多 10 次，防暴力破解
 const authRateLimit = {
@@ -14,10 +15,11 @@ const authRateLimit = {
 export async function authRoutes(app: FastifyInstance) {
   // ── 注册（手机号 + 密码，无验证码）────────────────────
   app.post('/auth/register', authRateLimit, async (req, reply) => {
-    const { phone, password, nickname } = req.body as {
+    const { phone, password, nickname, inviteCode } = req.body as {
       phone: string;
       password: string;
       nickname?: string;
+      inviteCode?: string;  // 可选邀请码
     };
 
     if (!phone || !/^1[3-9]\d{9}$/.test(phone)) return fail(reply, '手机号格式不正确');
@@ -36,6 +38,25 @@ export async function authRoutes(app: FastifyInstance) {
         nickname: (nickname?.trim() || '家长').slice(0, 20),
       },
     });
+
+    // 处理邀请码：给邀请人奖励积分
+    if (inviteCode) {
+      try {
+        const db = getDb();
+        const inviterCode = await db.inviteCode.findUnique({
+          where: { code: inviteCode.toUpperCase().trim() },
+        });
+        if (inviterCode && inviterCode.userId !== user.id) {
+          await Promise.all([
+            db.referral.create({ data: { inviterId: inviterCode.userId, inviteeId: user.id } }),
+            db.inviteCode.update({ where: { id: inviterCode.id }, data: { usedCount: { increment: 1 } } }),
+            addPoints(inviterCode.userId, 10, 'invite_register', `邀请 ${user.nickname || user.phone.slice(-4)} 注册`, db),
+          ]);
+        }
+      } catch {
+        // 邀请码处理失败不影响注册流程
+      }
+    }
 
     const token = app.jwt.sign({ userId: user.id, phone: user.phone }, { expiresIn: '30d' });
     return ok(reply, {

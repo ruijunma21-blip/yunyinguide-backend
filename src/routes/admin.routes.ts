@@ -3,6 +3,7 @@ import { getDb } from '../utils/db';
 import * as bcrypt from 'bcryptjs';
 import { ok, fail } from '../utils/response';
 import { env } from '../utils/env';
+import { addPoints } from './invite.routes';
 
 // 验证管理员 JWT
 async function requireAdmin(req: any, reply: any) {
@@ -211,6 +212,29 @@ export async function adminRoutes(app: FastifyInstance) {
     });
   });
 
+  // ── 查看用户积分 ──────────────────────────────────────
+  app.get('/admin/users/:id/points', { preHandler: requireAdmin }, async (req, reply) => {
+    const { id } = req.params as any;
+    const db = getDb();
+    const [points, txs, referrals] = await Promise.all([
+      db.userPoints.findUnique({ where: { userId: id } }),
+      db.pointTransaction.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 20 }),
+      db.referral.count({ where: { inviterId: id } }),
+    ]);
+    return ok(reply, { balance: points?.balance ?? 0, totalInvited: referrals, transactions: txs });
+  });
+
+  // ── 手动调整积分 ──────────────────────────────────────
+  app.post('/admin/users/:id/points', { preHandler: requireAdmin }, async (req, reply) => {
+    const { id } = req.params as any;
+    const { amount, note = '管理员手动调整' } = req.body as any;
+    if (!amount || isNaN(Number(amount))) return fail(reply, '金额无效');
+    const db = getDb();
+    await addPoints(id, Number(amount), 'manual_add', note, db);
+    const p = await db.userPoints.findUnique({ where: { userId: id } });
+    return ok(reply, { message: '积分已调整', newBalance: p?.balance ?? 0 });
+  });
+
   // ── 完成订单（手动确认付款，开通会员）────────────────
   app.post('/admin/orders/:id/complete', { preHandler: requireAdmin }, async (req, reply) => {
     const { id } = req.params as any;
@@ -233,6 +257,21 @@ export async function adminRoutes(app: FastifyInstance) {
       create: { userId: order.userId, planType: order.planType, startAt: now, endAt, status: 'active' },
       update: { planType: order.planType, endAt, status: 'active' },
     });
+
+    // 查找邀请关系，给邀请人奖励积分
+    try {
+      const referral = await db.referral.findUnique({
+        where: { inviteeId: order.userId },
+        include: { invitee: { select: { nickname: true, phone: true } } },
+      });
+      if (referral && referral.status === 'registered') {
+        const inviteeName = referral.invitee.nickname || referral.invitee.phone.slice(-4);
+        await Promise.all([
+          addPoints(referral.inviterId, 50, 'invite_paid', `${inviteeName} 开通了会员`, db),
+          db.referral.update({ where: { inviteeId: order.userId }, data: { status: 'rewarded' } }),
+        ]);
+      }
+    } catch { /* 积分奖励失败不影响主流程 */ }
 
     return ok(reply, { message: `已确认付款，会员已开通至 ${endAt.toLocaleDateString('zh-CN')}` });
   });

@@ -20,6 +20,7 @@ import { communityRoutes } from './routes/community.routes';
 import { adminRoutes } from './routes/admin.routes';
 import { announcementRoutes } from './routes/announcement.routes';
 import { homeRoutes } from './routes/home.routes';
+import { inviteRoutes } from './routes/invite.routes';
 
 const app = Fastify({ logger: { level: env.nodeEnv === 'development' ? 'info' : 'warn' } });
 
@@ -55,6 +56,7 @@ async function buildApp() {
   await app.register(adminRoutes, { prefix: '/api/v1' });
   await app.register(announcementRoutes, { prefix: '/api/v1' });
   await app.register(homeRoutes, { prefix: '/api/v1' });
+  await app.register(inviteRoutes, { prefix: '/api/v1' });
 
   app.setErrorHandler((error: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(error);

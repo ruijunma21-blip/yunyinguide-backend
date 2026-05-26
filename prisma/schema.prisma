@@ -24,9 +24,14 @@ model User {
   vocabLists   VocabList[]
   examGrades   ExamGrade[]
   studyPlans   StudyPlan[]
-  posts        Post[]
-  comments     Comment[]
-  postLikes    PostLike[]
+  posts            Post[]
+  comments         Comment[]
+  postLikes        PostLike[]
+  inviteCode       InviteCode?
+  inviterReferrals Referral[]         @relation("InviterReferrals")
+  inviteeReferral  Referral?          @relation("InviteeReferral")
+  userPoints       UserPoints?
+  pointTransactions PointTransaction[]
 }
 
 model Child {
@@ -229,6 +234,45 @@ model PostLike {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId])
+}
+
+// ── 邀请 & 积分模块 ───────────────────────────────────────
+
+model InviteCode {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  code      String   @unique
+  usedCount Int      @default(0)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Referral {
+  id         String   @id @default(uuid())
+  inviterId  String
+  inviteeId  String   @unique  // 一个用户只能被邀请一次
+  status     String   @default("registered") // registered | rewarded
+  createdAt  DateTime @default(now())
+  inviter    User     @relation("InviterReferrals", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee    User     @relation("InviteeReferral",  fields: [inviteeId], references: [id], onDelete: Cascade)
+}
+
+model UserPoints {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PointTransaction {
+  id        String   @id @default(uuid())
+  userId    String
+  amount    Int      // 正数=增加，负数=扣减
+  type      String   // invite_register | invite_paid | redeem | manual_add
+  note      String   @default("")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ── 系统公告模块 ──────────────────────────────────────────
