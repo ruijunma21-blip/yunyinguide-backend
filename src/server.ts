@@ -37,6 +37,8 @@ async function buildApp() {
   await app.register(fastifyStatic, {
     root: path.join(__dirname, '../public'),
     prefix: '/',
+    maxAge: 0,
+    etag: false,
   });
 
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
