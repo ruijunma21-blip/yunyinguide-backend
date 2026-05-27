@@ -21,6 +21,7 @@ export async function homeRoutes(app: FastifyInstance) {
       vocabLists,
       subscription,
       recentUsage,
+      latestGrades,
     ] = await Promise.all([
       // 错题总数
       db.errorRecord.count({ where: { userId } }),
@@ -30,10 +31,13 @@ export async function homeRoutes(app: FastifyInstance) {
       db.errorRecord.count({
         where: { userId, createdAt: { gte: subDays(new Date(), 7) } },
       }),
-      // 词单列表（含单词数）
+      // 词单列表（含单词数 + 已掌握数）
       db.vocabList.findMany({
         where: { userId },
-        include: { _count: { select: { words: true } } },
+        include: {
+          _count: { select: { words: true } },
+          words: { where: { mastery: { gte: 4 } }, select: { id: true } },
+        },
         orderBy: { updatedAt: 'desc' },
         take: 10,
       }),
@@ -45,6 +49,13 @@ export async function homeRoutes(app: FastifyInstance) {
         orderBy: { date: 'desc' },
         take: 30,
         select: { date: true, usageCount: true },
+      }),
+      // 最新各科成绩（每科取最新一条）
+      db.examGrade.findMany({
+        where: { userId },
+        orderBy: { examDate: 'desc' },
+        take: 10,
+        select: { subject: true, score: true, fullScore: true, examName: true, examDate: true },
       }),
     ]);
 
@@ -84,12 +95,22 @@ export async function homeRoutes(app: FastifyInstance) {
           id: l.id,
           name: l.name,
           wordCount: l._count.words,
+          masteredCount: l.words.length,
         })),
       },
       streakDays,
       todayUsage,
       isPremium,
       premiumEndAt,
+      latestGrades: (() => {
+        // 每科取最新一条
+        const seen = new Set<string>();
+        const result: typeof latestGrades = [];
+        for (const g of latestGrades) {
+          if (!seen.has(g.subject)) { seen.add(g.subject); result.push(g); }
+        }
+        return result;
+      })(),
     });
   });
 }

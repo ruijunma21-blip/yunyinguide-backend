@@ -31,19 +31,26 @@ export async function authRoutes(app: FastifyInstance) {
     if (exists) return fail(reply, '注册失败，请检查信息后重试', 409);
 
     const passwordHash = await bcrypt.hash(password, 12); // 提高 cost factor
-    const user = await getDb().user.create({
+    const db = getDb();
+    const user = await db.user.create({
       data: {
         phone,
         passwordHash,
         nickname: (nickname?.trim() || '家长').slice(0, 20),
-        status: 'pending', // 需要管理员审核后才能登录
+        status: 'active', // 注册即激活，无需审核
       },
     });
 
-    // 处理邀请码（记录关系，审核通过后积分生效）
+    // 新用户赠送 7 天免费体验
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 7);
+    await db.subscription.create({
+      data: { userId: user.id, planType: 'trial', startAt: new Date(), endAt: trialEnd, status: 'active' },
+    });
+
+    // 处理邀请码（记录关系，注册成功后积分立即生效）
     if (inviteCode) {
       try {
-        const db = getDb();
         const inviterCode = await db.inviteCode.findUnique({
           where: { code: inviteCode.toUpperCase().trim() },
         });
@@ -58,7 +65,17 @@ export async function authRoutes(app: FastifyInstance) {
       }
     }
 
-    return ok(reply, { requiresApproval: true, message: '注册成功，请等待管理员审核后登录' });
+    // 生成 token，注册后直接登录（无需再次手动登录）
+    const token = app.jwt.sign(
+      { userId: user.id, phone: user.phone, tv: 0 },
+      { expiresIn: '30d' }
+    );
+    return ok(reply, {
+      token,
+      user: { id: user.id, phone: user.phone, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },
+      isNewUser: true,
+      message: '注册成功，已赠送7天会员体验！',
+    }, 201);
   });
 
   // ── 登录（手机号 + 密码）─────────────────────────────
@@ -74,8 +91,8 @@ export async function authRoutes(app: FastifyInstance) {
     const match = await bcrypt.compare(password, hashToCompare);
 
     if (!user || !match) return fail(reply, '手机号或密码错误');
-    if (user.status === 'pending') return fail(reply, '账号审核中，请联系管理员（微信：Just197791）', 403);
-    if (user.status === 'rejected') return fail(reply, '账号审核未通过，请联系管理员（微信：Just197791）', 403);
+    if (user.status === 'pending') return fail(reply, '账号暂未激活，请联系管理员（微信：Just197791）', 403);
+    if (user.status === 'rejected') return fail(reply, '账号已被禁用，请联系管理员（微信：Just197791）', 403);
     if (user.status === 'banned') return fail(reply, '账号已被封禁', 403);
 
     // 每次登录自增 tokenVersion，使旧设备的 token 失效

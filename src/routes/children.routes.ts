@@ -29,4 +29,13 @@ export async function childrenRoutes(app: FastifyInstance) {
     const updated = await getDb().child.update({ where: { id }, data: { nickname, grade } });
     return ok(reply, updated);
   });
+
+  app.delete('/children/:id', { preHandler: requireAuth }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const { userId } = req.user as { userId: string };
+    const child = await getDb().child.findFirst({ where: { id, userId } });
+    if (!child) return fail(reply, '孩子档案不存在', 404);
+    await getDb().child.delete({ where: { id } });
+    return ok(reply, { message: '已删除' });
+  });
 }

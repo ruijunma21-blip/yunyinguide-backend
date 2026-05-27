@@ -49,6 +49,16 @@ export async function paymentRoutes(app: FastifyInstance) {
     }, 201);
   });
 
+  // 用户点"我已付款" → 提交支付凭证，等待管理员确认
+  app.post('/payment/submit/:orderId', { preHandler: requireAuth }, async (req, reply) => {
+    const { orderId } = req.params as { orderId: string };
+    const { userId } = req.user as { userId: string };
+    const order = await getDb().order.findFirst({ where: { id: orderId, userId, status: 'pending' } });
+    if (!order) return fail(reply, '订单不存在或已处理', 404);
+    await getDb().order.update({ where: { id: orderId }, data: { status: 'pending_verify' } });
+    return ok(reply, { message: '已收到付款申请，客服将在30分钟内为您开通会员' });
+  });
+
   app.post('/payment/notify/:method', async (req, reply) => {
     // Payment provider webhook callback
     const { method } = req.params as { method: string };
