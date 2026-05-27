@@ -38,11 +38,12 @@ export async function adminRoutes(app: FastifyInstance) {
     const db = getDb();
     const today = new Date(); today.setHours(0, 0, 0, 0);
 
-    const [totalUsers, todayUsers, premiumUsers, totalPosts, totalOrders,
+    const [totalUsers, todayUsers, premiumUsers, pendingUsers, totalPosts, totalOrders,
       pendingOrders, totalErrorRecords, todayUsage] = await Promise.all([
-      db.user.count(),
-      db.user.count({ where: { createdAt: { gte: today } } }),
+      db.user.count({ where: { status: { not: 'pending' } } }),
+      db.user.count({ where: { status: { not: 'pending' }, createdAt: { gte: today } } }),
       db.subscription.count({ where: { status: 'active', planType: { not: 'free' }, endAt: { gt: new Date() } } }),
+      db.user.count({ where: { status: 'pending' } }),
       db.post.count({ where: { status: 'published' } }),
       db.order.count(),
       db.order.count({ where: { status: 'pending' } }),
@@ -51,7 +52,7 @@ export async function adminRoutes(app: FastifyInstance) {
     ]);
 
     return ok(reply, {
-      totalUsers, todayUsers, premiumUsers,
+      totalUsers, todayUsers, premiumUsers, pendingUsers,
       totalPosts, totalOrders, pendingOrders,
       totalErrorRecords,
       todayAiCalls: todayUsage._sum.usageCount ?? 0,
@@ -123,6 +124,46 @@ export async function adminRoutes(app: FastifyInstance) {
     });
 
     return ok(reply, { message: `已开通${months}个月会员，到期时间：${endAt.toLocaleDateString('zh-CN')}` });
+  });
+
+  // ── 待审核用户列表 ────────────────────────────────────
+  app.get('/admin/users/pending', { preHandler: requireAdmin }, async (_req, reply) => {
+    const users = await getDb().user.findMany({
+      where: { status: 'pending' },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, phone: true, nickname: true, createdAt: true, status: true },
+    });
+    return ok(reply, users);
+  });
+
+  // ── 审核通过 ──────────────────────────────────────────
+  app.post('/admin/users/:id/approve', { preHandler: requireAdmin }, async (req, reply) => {
+    const { id } = req.params as any;
+    const db = getDb();
+    const user = await db.user.findUnique({ where: { id } });
+    if (!user) return fail(reply, '用户不存在', 404);
+    await db.user.update({ where: { id }, data: { status: 'active' } });
+    // 给邀请人奖励积分（注册时已创建 referral 记录）
+    try {
+      const referral = await db.referral.findUnique({
+        where: { inviteeId: id },
+        include: { invitee: { select: { nickname: true, phone: true } } },
+      });
+      if (referral) {
+        const inviteeName = referral.invitee.nickname || referral.invitee.phone.slice(-4);
+        await addPoints(referral.inviterId, 10, 'invite_register', `邀请 ${inviteeName} 注册审核通过`, db);
+      }
+    } catch { /* 积分失败不影响审核流程 */ }
+    return ok(reply, { message: `已通过 ${user.nickname || user.phone} 的注册审核` });
+  });
+
+  // ── 审核拒绝 ──────────────────────────────────────────
+  app.post('/admin/users/:id/reject', { preHandler: requireAdmin }, async (req, reply) => {
+    const { id } = req.params as any;
+    const user = await getDb().user.findUnique({ where: { id } });
+    if (!user) return fail(reply, '用户不存在', 404);
+    await getDb().user.update({ where: { id }, data: { status: 'rejected' } });
+    return ok(reply, { message: `已拒绝 ${user.nickname || user.phone} 的注册申请` });
   });
 
   // ── 禁用/恢复用户 ─────────────────────────────────────

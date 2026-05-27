@@ -36,10 +36,11 @@ export async function authRoutes(app: FastifyInstance) {
         phone,
         passwordHash,
         nickname: (nickname?.trim() || '家长').slice(0, 20),
+        status: 'pending', // 需要管理员审核后才能登录
       },
     });
 
-    // 处理邀请码：给邀请人奖励积分
+    // 处理邀请码（记录关系，审核通过后积分生效）
     if (inviteCode) {
       try {
         const db = getDb();
@@ -50,7 +51,6 @@ export async function authRoutes(app: FastifyInstance) {
           await Promise.all([
             db.referral.create({ data: { inviterId: inviterCode.userId, inviteeId: user.id } }),
             db.inviteCode.update({ where: { id: inviterCode.id }, data: { usedCount: { increment: 1 } } }),
-            addPoints(inviterCode.userId, 10, 'invite_register', `邀请 ${user.nickname || user.phone.slice(-4)} 注册`, db),
           ]);
         }
       } catch {
@@ -58,11 +58,7 @@ export async function authRoutes(app: FastifyInstance) {
       }
     }
 
-    const token = app.jwt.sign({ userId: user.id, phone: user.phone }, { expiresIn: '30d' });
-    return ok(reply, {
-      token,
-      user: { id: user.id, phone: user.phone, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },
-    });
+    return ok(reply, { requiresApproval: true, message: '注册成功，请等待管理员审核后登录' });
   });
 
   // ── 登录（手机号 + 密码）─────────────────────────────
@@ -78,9 +74,20 @@ export async function authRoutes(app: FastifyInstance) {
     const match = await bcrypt.compare(password, hashToCompare);
 
     if (!user || !match) return fail(reply, '手机号或密码错误');
+    if (user.status === 'pending') return fail(reply, '账号审核中，请联系管理员（微信：Just197791）', 403);
+    if (user.status === 'rejected') return fail(reply, '账号审核未通过，请联系管理员（微信：Just197791）', 403);
     if (user.status === 'banned') return fail(reply, '账号已被封禁', 403);
 
-    const token = app.jwt.sign({ userId: user.id, phone: user.phone }, { expiresIn: '30d' });
+    // 每次登录自增 tokenVersion，使旧设备的 token 失效
+    const updated = await getDb().user.update({
+      where: { id: user.id },
+      data: { tokenVersion: { increment: 1 } },
+    });
+
+    const token = app.jwt.sign(
+      { userId: user.id, phone: user.phone, tv: updated.tokenVersion },
+      { expiresIn: '30d' }
+    );
     return ok(reply, {
       token,
       user: { id: user.id, phone: user.phone, nickname: user.nickname, avatarUrl: user.avatarUrl, createdAt: user.createdAt },

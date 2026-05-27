@@ -56,6 +56,7 @@
     <!-- Tabs -->
     <div class="max-w-6xl mx-auto px-4 flex gap-6 text-sm">
       <button onclick="switchTab('dashboard')" id="tab-dashboard" class="py-3 font-medium text-gray-500 hover:text-orange-500 tab-active">数据总览</button>
+      <button onclick="switchTab('pending')" id="tab-pending" class="py-3 font-medium text-gray-500 hover:text-orange-500">待审核 <span id="pendingBadge" class="hidden ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full"></span></button>
       <button onclick="switchTab('users')" id="tab-users" class="py-3 font-medium text-gray-500 hover:text-orange-500">用户管理</button>
       <button onclick="switchTab('posts')" id="tab-posts" class="py-3 font-medium text-gray-500 hover:text-orange-500">帖子审核</button>
       <button onclick="switchTab('orders')" id="tab-orders" class="py-3 font-medium text-gray-500 hover:text-orange-500">订单管理</button>
@@ -72,6 +73,15 @@
         <div class="bg-white rounded-xl p-4 shadow-sm animate-pulse h-24"></div>
         <div class="bg-white rounded-xl p-4 shadow-sm animate-pulse h-24"></div>
       </div>
+    </div>
+
+    <!-- Pending Tab -->
+    <div id="content-pending" class="hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-gray-700">待审核注册申请</h2>
+        <button onclick="loadPendingUsers()" class="px-3 py-1.5 text-xs bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">刷新</button>
+      </div>
+      <div id="pendingTable" class="bg-white rounded-xl shadow-sm overflow-hidden"></div>
     </div>
 
     <!-- Users Tab -->
@@ -207,7 +217,7 @@ if (token) showDashboard();
 
 // ── Tabs ──────────────────────────────────────────────────
 function switchTab(tab) {
-  ['dashboard','users','posts','orders','announcements'].forEach(t => {
+  ['dashboard','pending','users','posts','orders','announcements'].forEach(t => {
     document.getElementById('content-'+t).classList.add('hidden');
     document.getElementById('tab-'+t).classList.remove('tab-active');
     document.getElementById('tab-'+t).classList.add('text-gray-500');
@@ -216,6 +226,7 @@ function switchTab(tab) {
   document.getElementById('tab-'+tab).classList.add('tab-active');
   document.getElementById('tab-'+tab).classList.remove('text-gray-500');
   currentTab = tab;
+  if (tab==='pending') loadPendingUsers();
   if (tab==='users') loadUsers(1);
   if (tab==='posts') loadPosts(1,'published');
   if (tab==='orders') loadOrders(1,'pending');
@@ -227,9 +238,14 @@ async function loadStats() {
   const s = await api('/admin/stats');
   document.getElementById('statsGrid').innerHTML = `
     <div class="bg-white rounded-xl p-4 shadow-sm">
-      <p class="text-xs text-gray-500 mb-1">总用户数</p>
+      <p class="text-xs text-gray-500 mb-1">正式用户数</p>
       <p class="text-2xl font-bold text-gray-800">${s.totalUsers}</p>
       <p class="text-xs text-green-500 mt-1">今日新增 +${s.todayUsers}</p>
+    </div>
+    <div class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:ring-2 hover:ring-yellow-300" onclick="switchTab('pending')">
+      <p class="text-xs text-gray-500 mb-1">待审核注册</p>
+      <p class="text-2xl font-bold ${s.pendingUsers>0?'text-yellow-500':'text-gray-400'}">${s.pendingUsers}</p>
+      <p class="text-xs text-gray-400 mt-1">点击去审核 →</p>
     </div>
     <div class="bg-white rounded-xl p-4 shadow-sm">
       <p class="text-xs text-gray-500 mb-1">付费会员</p>
@@ -237,17 +253,77 @@ async function loadStats() {
       <p class="text-xs text-gray-400 mt-1">转化率 ${s.totalUsers>0?(s.premiumUsers/s.totalUsers*100).toFixed(1):'0'}%</p>
     </div>
     <div class="bg-white rounded-xl p-4 shadow-sm">
-      <p class="text-xs text-gray-500 mb-1">今日AI调用</p>
-      <p class="text-2xl font-bold text-blue-500">${s.todayAiCalls}</p>
-      <p class="text-xs text-gray-400 mt-1">累计错题 ${s.totalErrorRecords}</p>
-    </div>
-    <div class="bg-white rounded-xl p-4 shadow-sm">
       <p class="text-xs text-gray-500 mb-1">待处理订单</p>
       <p class="text-2xl font-bold ${s.pendingOrders>0?'text-red-500':'text-gray-400'}">${s.pendingOrders}</p>
-      <p class="text-xs text-gray-400 mt-1">社区帖子 ${s.totalPosts}</p>
+      <p class="text-xs text-gray-400 mt-1">今日AI调用 ${s.todayAiCalls}</p>
     </div>
   `;
+  // 更新待审核角标
+  const badge = document.getElementById('pendingBadge');
+  if (s.pendingUsers > 0) {
+    badge.textContent = s.pendingUsers;
+    badge.classList.remove('hidden');
+    showToast(`🔔 有 ${s.pendingUsers} 个账号待审核`, true);
+  } else {
+    badge.classList.add('hidden');
+  }
   if (s.pendingOrders > 0) showToast(`⚠️ 有 ${s.pendingOrders} 笔订单待处理`, true);
+}
+
+// ── Pending Users ─────────────────────────────────────────
+async function loadPendingUsers() {
+  const users = await api('/admin/users/pending');
+  const badge = document.getElementById('pendingBadge');
+  if (users.length > 0) { badge.textContent = users.length; badge.classList.remove('hidden'); }
+  else { badge.classList.add('hidden'); }
+  if (!users.length) {
+    document.getElementById('pendingTable').innerHTML = '<p class="text-center text-gray-400 text-sm py-12">暂无待审核账号 ✅</p>';
+    return;
+  }
+  const rows = users.map(u => `
+    <tr class="border-t border-gray-50 hover:bg-gray-50">
+      <td class="px-4 py-3 text-sm text-gray-600">${u.phone}</td>
+      <td class="px-4 py-3 text-sm font-medium">${u.nickname||'-'}</td>
+      <td class="px-4 py-3 text-xs text-gray-400">${fmt(u.createdAt)}</td>
+      <td class="px-4 py-3">
+        <div class="flex gap-2">
+          <button onclick="approveUser('${u.id}')" class="px-3 py-1 text-xs bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium">✓ 通过</button>
+          <button onclick="rejectUser('${u.id}')" class="px-3 py-1 text-xs bg-red-50 text-red-500 rounded-lg hover:bg-red-100">✕ 拒绝</button>
+        </div>
+      </td>
+    </tr>`).join('');
+  document.getElementById('pendingTable').innerHTML = `
+    <table class="w-full">
+      <thead><tr class="bg-yellow-50 text-xs text-gray-500">
+        <th class="px-4 py-3 text-left">手机号</th>
+        <th class="px-4 py-3 text-left">昵称</th>
+        <th class="px-4 py-3 text-left">申请时间</th>
+        <th class="px-4 py-3 text-left">操作</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="px-4 py-2 text-xs text-gray-400 border-t">共 ${users.length} 人待审核</div>
+  `;
+}
+
+async function approveUser(userId) {
+  if (!confirm('确认通过该用户的注册申请？通过后用户可立即登录。')) return;
+  try {
+    const d = await api(`/admin/users/${userId}/approve`, { method:'POST' });
+    showToast('✅ ' + d.message);
+    loadPendingUsers();
+    loadStats();
+  } catch(e) { showToast(e.message, false); }
+}
+
+async function rejectUser(userId) {
+  if (!confirm('确认拒绝该注册申请？用户将无法登录。')) return;
+  try {
+    const d = await api(`/admin/users/${userId}/reject`, { method:'POST' });
+    showToast(d.message);
+    loadPendingUsers();
+    loadStats();
+  } catch(e) { showToast(e.message, false); }
 }
 
 // ── Users ─────────────────────────────────────────────────
