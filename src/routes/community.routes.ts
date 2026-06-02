@@ -12,15 +12,20 @@ function sanitize(str: string): string {
     .trim();
 }
 
+const VALID_TOPICS = ['general', 'method', 'question', 'share', 'resource', 'chat'];
+
 export async function communityRoutes(app: FastifyInstance) {
-  // ── 帖子列表 ──────────────────────────────────────────
+  // ── 帖子列表（支持 topic 过滤）────────────────────────
   app.get('/posts', { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req.user as any;
-    const { take = '20', cursor } = req.query as any;
+    const { take = '20', cursor, topic } = req.query as any;
     const db = getDb();
 
+    const where: any = { status: 'published' };
+    if (topic && topic !== 'all' && VALID_TOPICS.includes(topic)) where.topic = topic;
+
     const posts = await db.post.findMany({
-      where: { status: 'published' },
+      where,
       take: parseInt(take) + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       orderBy: { createdAt: 'desc' },
@@ -36,11 +41,13 @@ export async function communityRoutes(app: FastifyInstance) {
       id: p.id,
       content: p.content,
       imageUrl: p.imageUrl,
+      topic: p.topic,
       likeCount: p._count.likes,
       commentCount: p._count.comments,
       isLiked: p.likes.length > 0,
       createdAt: p.createdAt,
       author: { id: p.user.id, nickname: p.user.nickname, avatarUrl: p.user.avatarUrl },
+      isOwn: p.userId === userId,
     }));
 
     return ok(reply, { items, nextCursor: hasNext ? items[items.length - 1]?.id : undefined });
@@ -49,31 +56,67 @@ export async function communityRoutes(app: FastifyInstance) {
   // ── 发帖 ──────────────────────────────────────────────
   app.post('/posts', { preHandler: requireAuth }, async (req, reply) => {
     const { userId } = req.user as any;
-    const { content, imageUrl } = req.body as any;
+    const { content, imageUrl, topic = 'general' } = req.body as any;
 
     if (!content || content.trim().length < 5) return fail(reply, '内容至少5个字', 400);
     if (content.length > 500) return fail(reply, '内容不超过500字', 400);
 
     const cleanContent = sanitize(content);
     if (cleanContent.length < 5) return fail(reply, '内容包含非法字符', 400);
+    const safeTopic = VALID_TOPICS.includes(topic) ? topic : 'general';
 
     const db = getDb();
     const user = await db.user.findUnique({ where: { id: userId }, select: { nickname: true } });
 
     const post = await db.post.create({
-      data: { userId, content: cleanContent, imageUrl },
+      data: { userId, content: cleanContent, imageUrl, topic: safeTopic },
     });
 
     return ok(reply, {
       id: post.id,
       content: post.content,
       imageUrl: post.imageUrl,
+      topic: post.topic,
       likeCount: 0,
       commentCount: 0,
       isLiked: false,
+      isOwn: true,
       createdAt: post.createdAt,
       author: { id: userId, nickname: user?.nickname ?? '用户', avatarUrl: undefined },
     });
+  });
+
+  // ── 删帖（仅本人）────────────────────────────────────
+  app.delete('/posts/:postId', { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = req.user as any;
+    const { postId } = req.params as any;
+    const db = getDb();
+
+    const post = await db.post.findUnique({ where: { id: postId } });
+    if (!post) return fail(reply, '帖子不存在', 404);
+    if (post.userId !== userId) return fail(reply, '无权删除', 403);
+
+    await db.post.delete({ where: { id: postId } });
+    return ok(reply, { deleted: true });
+  });
+
+  // ── 举报帖子 ──────────────────────────────────────────
+  app.post('/posts/:postId/report', { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = req.user as any;
+    const { postId } = req.params as any;
+    const { reason = 'spam' } = req.body as any;
+    const db = getDb();
+
+    const post = await db.post.findUnique({ where: { id: postId } });
+    if (!post) return fail(reply, '帖子不存在', 404);
+    if (post.userId === userId) return fail(reply, '不能举报自己的帖子', 400);
+
+    await db.postReport.upsert({
+      where: { postId_userId: { postId, userId } },
+      update: { reason },
+      create: { postId, userId, reason },
+    });
+    return ok(reply, { reported: true });
   });
 
   // ── 点赞 / 取消点赞 ───────────────────────────────────

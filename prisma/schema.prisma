@@ -31,6 +31,7 @@ model User {
   inviteCode       InviteCode?
   inviterReferrals Referral[]         @relation("InviterReferrals")
   inviteeReferral  Referral?          @relation("InviteeReferral")
+  postReports      PostReport[]
   userPoints       UserPoints?
   pointTransactions PointTransaction[]
 }
@@ -206,6 +207,7 @@ model Post {
   userId       String
   content      String
   imageUrl     String?
+  topic        String        @default("general") // general | method | question | share | resource | chat
   likeCount    Int           @default(0)
   commentCount Int           @default(0)
   status       String        @default("published") // published | hidden
@@ -214,6 +216,19 @@ model Post {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments     Comment[]
   likes        PostLike[]
+  reports      PostReport[]
+}
+
+model PostReport {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  reason    String   @default("spam")
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
 }
 
 model Comment {
